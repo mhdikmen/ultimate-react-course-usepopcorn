@@ -53,7 +53,7 @@ const average = (arr) =>
 const KEY = "b83197e1";
 
 export default function App() {
-  const [query, setQuery] = useState("inception");
+  const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
   const [watched, setWatched] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -118,17 +118,18 @@ export default function App() {
           setMovies(data.Search);
           setError("");
         } catch (err) {
-          console.error(err);
+          console.log(err);
           if (err.name !== "AbortError") setError(err.message);
         } finally {
           setIsLoading(false);
         }
       }
-      if (query.length < 3) {
+      if (query?.length < 3) {
         setMovies([]);
         setError("");
         return;
       }
+      handleCloseMovie();
       fetchMovies();
       return function () {
         controller.abort();
@@ -219,7 +220,7 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
       function callBack(e) {
         if (e.code === "Escape") {
           onCloseMovie();
-          console.log("CLOSING");
+          // console.log("CLOSING");
         }
       }
       document.addEventListener("keydown", callBack);
