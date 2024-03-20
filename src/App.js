@@ -1,5 +1,8 @@
-import { Children, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import StarRating from "./StartRating";
+import { useMovies } from "./useMovies";
+import { useLocalStorageState } from "./useLocalStorage";
+import { useKey } from "./useKey";
 
 const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
@@ -8,16 +11,14 @@ const KEY = "b83197e1";
 
 export default function App() {
   const [query, setQuery] = useState("");
-  const [movies, setMovies] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const { movies, isLoading, error } = useMovies(query, handleCloseMovie);
 
-  // const [watched, setWatched] = useState([]);
-  const [watched, setWatched] = useState(() => {
-    const storedValue = JSON.parse(localStorage.getItem("watched"));
-    return storedValue;
-  });
+  const [watched, setWatched] = useLocalStorageState([], "watched");
+  // const [watched, setWatched] = useState(() => {
+  //   const storedValue = JSON.parse(localStorage.getItem("watched"));
+  //   return storedValue;
+  // });
 
   function handleSelectMovie(id) {
     setSelectedId((selectedId) => (id === selectedId ? null : id));
@@ -36,53 +37,6 @@ export default function App() {
   function handleDeleteWatched(id) {
     setWatched((watched) => watched.filter((movie) => movie.imdbID !== id));
   }
-
-  useEffect(
-    function () {
-      localStorage.setItem("watched", JSON.stringify(watched));
-    },
-    [watched]
-  );
-
-  useEffect(
-    function () {
-      const controller = new AbortController();
-      async function fetchMovies() {
-        try {
-          setError("");
-          setIsLoading(true);
-          const res = await fetch(
-            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
-            { signal: controller.signal }
-          );
-
-          if (!res.ok) throw Error("Something went wrong with fetching movies");
-
-          const data = await res.json();
-          if (data.Response === "False") throw new Error(data.Error);
-
-          setMovies(data.Search);
-          setError("");
-        } catch (err) {
-          console.log(err);
-          if (err.name !== "AbortError") setError(err.message);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-      if (query?.length < 3) {
-        setMovies([]);
-        setError("");
-        return;
-      }
-      handleCloseMovie();
-      fetchMovies();
-      return function () {
-        controller.abort();
-      };
-    },
-    [query]
-  );
 
   return (
     <>
@@ -172,8 +126,6 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
   */
 
   const isTop = imdbRating > 8;
-  console.log(isTop);
-
   const [avgRating, setAvgRating] = useState(0);
 
   function handleAdd() {
@@ -198,21 +150,7 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
     onCloseMovie();
   }
 
-  useEffect(
-    function () {
-      function callBack(e) {
-        if (e.code === "Escape") {
-          onCloseMovie();
-          // console.log("CLOSING");
-        }
-      }
-      document.addEventListener("keydown", callBack);
-      return function () {
-        document.removeEventListener("keydown", callBack);
-      };
-    },
-    [onCloseMovie]
-  );
+  useKey("Escape", onCloseMovie);
 
   useEffect(
     function () {
@@ -336,21 +274,11 @@ function Logo() {
 function Search({ query, setQuery }) {
   const inputEl = useRef(null);
 
-  useEffect(
-    function () {
-      function callBack(e) {
-        if (e.code === "Enter") {
-          if (document.activeElement === inputEl.current) return;
-          inputEl.current.focus();
-          setQuery("");
-        }
-      }
-
-      return () => document.addEventListener("keydown", callBack);
-    },
-    [setQuery]
-  );
-
+  useKey("Enter", function () {
+    if (document.activeElement === inputEl.current) return;
+    inputEl.current.focus();
+    setQuery("");
+  });
   // useEffect(function () {
   //   const el = document.querySelector(".search");
   //   console.log(el);
